@@ -1,0 +1,74 @@
+@NovaWallet_HostAddress = http://localhost:8080
+
+### Mint a dev JWT for a customer
+POST {{NovaWallet_HostAddress}}/auth/token
+Content-Type: application/json
+
+{
+  "customerId": "customer-001"
+}
+
+### Create a wallet for the caller identified by the bearer token (paste the access_token from above)
+POST {{NovaWallet_HostAddress}}/wallets
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{}
+
+### Get wallet balance (paste the walletId from the create response)
+GET {{NovaWallet_HostAddress}}/wallets/{{walletId}}
+Authorization: Bearer {{token}}
+
+### Look up the same wallet by its customer-facing account number instead
+GET {{NovaWallet_HostAddress}}/wallets/by-account-number/{{accountNumber}}
+Authorization: Bearer {{token}}
+
+### Simulate a third-party (interbank/NIP) credit landing in a wallet, addressed by account number
+POST {{NovaWallet_HostAddress}}/transactions/external-inbound
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "accountNumber": "{{accountNumber}}",
+  "amountKobo": 150000
+}
+
+### Transfer between two wallets — FromWalletId is your own wallet's id (from the create
+### response), ToAccountNumber is the recipient's account number (from their create response)
+POST {{NovaWallet_HostAddress}}/transactions/internal-transfers
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{$guid}}
+
+{
+  "fromWalletId": "{{walletId}}",
+  "toAccountNumber": "{{recipientAccountNumber}}",
+  "amountKobo": 5000
+}
+
+### Debit your own wallet to simulate an outbound third-party (interbank/NIP) transfer
+### (paste the returned transactionId below to simulate a reversal)
+POST {{NovaWallet_HostAddress}}/transactions/external-outbound
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{$guid}}
+
+{
+  "walletId": "{{walletId}}",
+  "amountKobo": 5000
+}
+
+### Simulate the NIP switch reporting that the outbound transfer above failed, reversing it
+POST {{NovaWallet_HostAddress}}/transactions/external-outbound/{{transactionId}}/reversal
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "ACCOUNT_NOT_FOUND"
+}
+
+### Get the wallet's transaction history, newest first
+GET {{NovaWallet_HostAddress}}/wallets/{{walletId}}/transactions
+Authorization: Bearer {{token}}
+
+###
